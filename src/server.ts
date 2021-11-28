@@ -2,7 +2,11 @@ import dgram from "dgram";
 
 import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
-import { AnyMessageServer, ConnectionSuccessful } from "./interfaces";
+import {
+  AnyMessageClient,
+  AnyMessageServer,
+  ConnectionSuccessful,
+} from "./interfaces";
 // import { networkInterfaces } from "os";
 
 // const nets = networkInterfaces();
@@ -28,7 +32,10 @@ const address = "25.8.147.114";
 
 const clients: dgram.RemoteInfo[] = [];
 
-const broadcast = (msg: string, sendingUser?: dgram.RemoteInfo) => {
+const broadcast = (
+  message: AnyMessageClient,
+  sendingUser?: dgram.RemoteInfo
+) => {
   const clientsToSend = sendingUser
     ? clients.filter(
         (client) =>
@@ -37,11 +44,14 @@ const broadcast = (msg: string, sendingUser?: dgram.RemoteInfo) => {
       )
     : clients;
 
-  clientsToSend.map((client) => sendUniqueMessage(msg, client));
+  clientsToSend.map((client) => sendUniqueMessage(message, client));
 };
 
-function sendUniqueMessage(message: string, client: dgram.RemoteInfo) {
-  const msgBuffered = Buffer.from(message);
+function sendUniqueMessage(
+  message: AnyMessageClient,
+  client: dgram.RemoteInfo
+) {
+  const msgBuffered = Buffer.from(JSON.stringify(message));
 
   return server.send(
     msgBuffered,
@@ -60,29 +70,33 @@ server.bind({
 });
 
 server.on("message", (message, rinfo) => {
-  // const hasClient = clients.find(
-  //   (client) => client.address != rinfo.address || client.port || client.port
-  // );
-
   const unbufferedMessage = JSON.parse(String(message)) as AnyMessageServer;
 
   switch (unbufferedMessage.type) {
     case "connect":
       clients.push(rinfo);
-      console.log(unbufferedMessage);
-      broadcast(`Nova conexão: ${rinfo.address}:${rinfo.port}`, rinfo);
+      broadcast(
+        {
+          type: "message",
+          message: `Nova conexão: ${rinfo.address}:${rinfo.port}`,
+        },
+        rinfo
+      );
 
       const connectionInfo: ConnectionSuccessful = {
         type: "conectionSuccessful",
         address: rinfo.address,
         port: rinfo.port,
       };
-      sendUniqueMessage(JSON.stringify(connectionInfo), rinfo);
+      sendUniqueMessage(connectionInfo, rinfo);
 
       break;
     case "message":
       broadcast(
-        `${rinfo.address}:${rinfo.port} => \n${unbufferedMessage.message}`,
+        {
+          type: "message",
+          message: `Nova conexão: ${rinfo.address}:${rinfo.port} \n${unbufferedMessage.message}`,
+        },
         rinfo
       );
       break;
@@ -95,7 +109,13 @@ server.on("message", (message, rinfo) => {
         1
       );
 
-      broadcast(`Desconectado: ${rinfo.address}:${rinfo.port}`, rinfo);
+      broadcast(
+        {
+          type: "message",
+          message: `Desconectado: ${rinfo.address}:${rinfo.port}`,
+        },
+        rinfo
+      );
     default:
       console.log(unbufferedMessage);
       break;

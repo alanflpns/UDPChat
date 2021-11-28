@@ -5,12 +5,12 @@ interface GenericMessage<T = string> {
 export interface Connect extends GenericMessage<"connect"> {
   author: string;
 }
-export interface Message extends GenericMessage<"message"> {
+export interface MessageServer extends GenericMessage<"message"> {
   message: string;
 }
 export interface Disconnect extends GenericMessage<"disconnect"> {}
 
-export type AnyMessageServer = Connect | Message | Disconnect;
+export type AnyMessageServer = Connect | MessageServer | Disconnect;
 
 export interface ConnectionSuccessful
   extends GenericMessage<"conectionSuccessful"> {
@@ -18,4 +18,8 @@ export interface ConnectionSuccessful
   port: number;
 }
 
-export type AnyMessageClient = ConnectionSuccessful;
+export interface MessageClient extends GenericMessage<"message"> {
+  message: string;
+}
+
+export type AnyMessageClient = ConnectionSuccessful | MessageClient;
