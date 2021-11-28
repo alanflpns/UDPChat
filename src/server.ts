@@ -74,7 +74,7 @@ server.on("message", (message, rinfo) => {
   //   (client) => client.address != rinfo.address || client.port || client.port
   // );
 
-  const unbufferedMessage: AnyMessage = JSON.parse(String(message));
+  const unbufferedMessage = JSON.parse(String(message)) as AnyMessage;
 
   switch (unbufferedMessage.type) {
     case "connect":
