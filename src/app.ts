@@ -4,6 +4,9 @@ import { stdin as input, stdout as output } from "process";
 const port = 5000;
 const address = "25.8.147.114";
 
+const closeShortcut = "server close";
+const openShortcut = "server open";
+
 const server = dgram.createSocket("udp4");
 
 server.bind({
@@ -16,17 +19,17 @@ server.on("message", (msg, rinfo) => {
   console.log(msg);
   console.log(rinfo);
 });
-``;
 
 server.on("listening", () => {
   const serverAddress = server.address();
 
   console.log(
-    `O servidor está ouvindo em ${serverAddress.address}:${serverAddress.port}`
+    `O servidor está ouvindo em ${serverAddress.address}:${serverAddress.port} \nPara encerrar a conexão digite '${closeShortcut}'`
   );
 });
 
 server.on("error", (error) => {
+  console.log("error server");
   console.log(error.message);
   server.close();
 });
@@ -41,14 +44,22 @@ const sendMessage = (message: string) => {
 
 const rl = readline.createInterface({ input, output });
 
-rl.on("close", () => {
-  rl.close();
-});
-
 rl.on("line", (input) => {
   if (input.trim().length == 0) {
     return rl.write("Mensagem Inválida");
   }
 
-  sendMessage(input);
+  switch (input) {
+    case closeShortcut:
+      server.disconnect();
+      console.log(
+        `Server Encerrado \nPara iniciar novamente a conexão digite: ${openShortcut}`
+      );
+      break;
+    case openShortcut:
+      server.connect(port, address);
+      break;
+    default:
+      sendMessage(input);
+  }
 });
