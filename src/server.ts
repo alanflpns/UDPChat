@@ -2,8 +2,8 @@ import dgram from "dgram";
 
 import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
+import { AnyMessage } from "./interfaces";
 // import { networkInterfaces } from "os";
-
 
 // const nets = networkInterfaces();
 // const results: any = {};
@@ -20,18 +20,6 @@ import { stdin as input, stdout as output } from "process";
 //     }
 //   }
 // }
-
-interface Message<T = string> {
-  type: T;
-}
-
-interface Connect extends Message<"connect"> {}
-interface RealMessage extends Message<"message"> {
-  message: string;
-}
-interface Disconnect extends Message<"disconnect"> {}
-
-type AnyMessage = Connect | RealMessage | Disconnect;
 
 const closeShortcut = "server close";
 
