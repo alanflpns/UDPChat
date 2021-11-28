@@ -2,7 +2,7 @@ import dgram from "dgram";
 
 import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
-import { AnyMessage, ConnectionSuccessful } from "./interfaces";
+import { AnyMessageServer, ConnectionSuccessful } from "./interfaces";
 // import { networkInterfaces } from "os";
 
 // const nets = networkInterfaces();
@@ -64,7 +64,7 @@ server.on("message", (message, rinfo) => {
   //   (client) => client.address != rinfo.address || client.port || client.port
   // );
 
-  const unbufferedMessage = JSON.parse(String(message)) as AnyMessage;
+  const unbufferedMessage = JSON.parse(String(message)) as AnyMessageServer;
 
   switch (unbufferedMessage.type) {
     case "connect":
@@ -77,7 +77,7 @@ server.on("message", (message, rinfo) => {
         address: rinfo.address,
         port: rinfo.port,
       };
-      sendUniqueMessage(connectionInfo.toString(), rinfo);
+      sendUniqueMessage(JSON.stringify(connectionInfo), rinfo);
 
       break;
     case "message":

@@ -10,9 +10,12 @@ export interface Message extends GenericMessage<"message"> {
 }
 export interface Disconnect extends GenericMessage<"disconnect"> {}
 
-export type AnyMessage = Connect | Message | Disconnect;
+export type AnyMessageServer = Connect | Message | Disconnect;
 
-export interface ConnectionSuccessful extends GenericMessage<'conectionSuccessful'> {
+export interface ConnectionSuccessful
+  extends GenericMessage<"conectionSuccessful"> {
   address: string;
   port: number;
 }
+
+export type AnyMessageClient = ConnectionSuccessful;
