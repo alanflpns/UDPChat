@@ -1,79 +1,166 @@
 import dgram from "dgram";
-import util from "util";
 
-const port = 3000;
-const clients: any = [];
+import * as readline from "readline";
+import { stdin as input, stdout as output } from "process";
+// import { networkInterfaces } from "os";
 
-function Message(type: any, message: any, rinfo: any) {
-  const brodcast = (msg: any) => {
-    var _buffer = Buffer.from(msg);
 
-    clients.forEach((current: any) => {
-      if (current.port != rinfo.port) {
-        server.send(_buffer, 0, _buffer.length, current.port, current.address);
-      }
-    });
-  };
+// const nets = networkInterfaces();
+// const results: any = {};
 
-  const typeConnect = () => {
-    var _message = util.format("Nova conexão: ", rinfo.port);
-    clients.push(rinfo);
+// for (const name of Object.keys(nets)) {
+//   for (const net of nets[name]!) {
+//     console.log(net);
+//     // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+//     if (net.family === "IPv4" && !net.internal) {
+//       if (!results[name]) {
+//         results[name] = [];
+//       }
+//       results[name].push(net.address);
+//     }
+//   }
+// }
 
-    brodcast(_message);
-    console.log(_message);
-  };
-
-  const typeDisconnect = function () {
-    var _message = util.format("Desconectado: ", rinfo.port);
-    clients.splice(clients.indexOf(rinfo), 1);
-
-    brodcast(_message);
-    console.log(_message);
-  };
-
-  const typeMessage = function () {
-    var _message = util.format("%d => %s", rinfo.port, message);
-
-    brodcast(_message);
-    console.log(_message);
-  };
-
-  switch (type) {
-    case "connect":
-      typeConnect();
-      break;
-
-    case "disconnect":
-      typeDisconnect();
-      break;
-
-    case "message":
-      typeMessage();
-      break;
-
-    default:
-      break;
-  }
+interface Message<T = string> {
+  type: T;
 }
 
-const server = dgram.createSocket("udp4", (data, rinfo) => {
-  const newData = JSON.parse(data.toString());
-  Message(newData.type, newData.message, rinfo);
+interface Connect extends Message<"connect"> {}
+interface RealMessage extends Message<"message"> {
+  message: string;
+}
+interface Disconnect extends Message<"disconnect"> {}
 
-  process.stdin.resume();
+type AnyMessage = Connect | RealMessage | Disconnect;
 
-  process.stdin.removeAllListeners("data");
-  process.stdin.on("data", function (chunk) {
-    var buffer = Buffer.from(
-      "Server => %s" + chunk.toString().replace(/\n|\n/g, "")
+const closeShortcut = "server close";
+
+const port = 5000;
+const address = "25.8.147.114";
+
+const clients: dgram.RemoteInfo[] = [];
+
+const broadcast = (msg: string, sendingUser?: dgram.RemoteInfo) => {
+  const msgBuffered = Buffer.from(msg);
+
+  const clientsToSend = sendingUser
+    ? clients.filter(
+        (client) =>
+          client.address != sendingUser.address ||
+          client.port != sendingUser.port
+      )
+    : clients;
+
+  clientsToSend.map((client) => {
+    server.send(
+      msgBuffered,
+      0,
+      msgBuffered.length,
+      client.port,
+      client.address
     );
-
-    clients.forEach((current: any) => {
-      server.send(buffer, 0, buffer.length, current.port, current.address);
-    });
   });
+};
+
+const server = dgram.createSocket("udp4");
+
+server.bind({
+  address,
+  port,
 });
 
-server.bind(port, function () {
-  console.log("Servidor sendo executado na porta:.", port);
+server.on("message", (message, rinfo) => {
+  // const hasClient = clients.find(
+  //   (client) => client.address != rinfo.address || client.port || client.port
+  // );
+
+  const unbufferedMessage: AnyMessage = JSON.parse(String(message));
+
+  switch (unbufferedMessage.type) {
+    case "connect":
+      clients.push(rinfo);
+      broadcast(`Nova conexão: ${rinfo.address}:${rinfo.port}`, rinfo);
+      break;
+    case "message":
+      broadcast(
+        `${rinfo.address}:${rinfo.port} => \n${unbufferedMessage.message}`,
+        rinfo
+      );
+      break;
+    case "disconnect":
+      clients.splice(
+        clients.findIndex(
+          (client) =>
+            client.address == rinfo.address && client.port == rinfo.port
+        ),
+        1
+      );
+
+      broadcast(`Desconectado: ${rinfo.address}:${rinfo.port}`, rinfo);
+    default:
+      console.log(unbufferedMessage);
+      break;
+  }
 });
+
+server.on("connect", (data: any, rinfo: any) => {
+  console.log("connect");
+});
+
+server.on("listening", () => {
+  const serverAddress = server.address();
+
+  console.log(
+    `O servidor está ouvindo em ${serverAddress.address}:${serverAddress.port} `
+  );
+  // Para encerrar a conexão digite '${closeShortcut}'`
+  // );
+});
+
+server.on("error", (error) => {
+  console.log("error server");
+  console.log(error.message);
+  server.close();
+});
+
+// const sendMessage = (message: string) => {
+//   const messageBuffered = Buffer.from(message);
+//   console.log(`mensagem enviada com sucesso: "${messageBuffered}"`);
+// };
+
+const rl = readline.createInterface({ input, output, terminal: false });
+
+rl.on("line", (input) => {
+  switch (input) {
+    case closeShortcut:
+      // broadcast("Server encerrado");
+      console.log(`Server Encerrado`);
+      rl.close();
+      break;
+    default:
+      console.log("Comando não encontrado");
+      break;
+  }
+});
+
+rl.on("close", () => {
+  server.close();
+});
+
+// const server = dgram.createSocket("udp4", (data, rinfo) => {
+//   const newData = JSON.parse(data.toString());
+//   Message(newData.type, newData.message, rinfo);
+
+//   process.stdin.resume();
+
+//   process.stdin.removeAllListeners("data");
+//   process.stdin.on("data", function (chunk) {
+//     var buffer = Buffer.from(
+//       "Server => %s" + chunk.toString().replace(/\n|\n/g, "")
+//     );
+
+//     clients.forEach((current: any) => {
+//       server.send(buffer, 0, buffer.length, current.port, current.address);
+//     });
+//   });
+// });

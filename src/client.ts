@@ -1,8 +1,8 @@
 import dgram from "dgram";
 
 const server = {
-  host: "localhost",
-  port: 3000,
+  host: "25.8.147.114",
+  port: 5000,
 };
 
 function Command() {
