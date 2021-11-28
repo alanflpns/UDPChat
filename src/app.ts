@@ -38,7 +38,7 @@ const sendMessage = (message: string) => {
   const messageBuffered = Buffer.from(message);
   console.log(`mensagem enviada com sucesso: "${messageBuffered}"`);
   server.send(message, port, (err) => {
-    console.log(err?.message);
+    if (err) console.log(err?.message);
   });
 };
 
