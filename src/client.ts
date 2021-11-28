@@ -3,10 +3,11 @@ import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
 
 import {
-  AnyMessageClient,
-  AnyMessageServer,
+  ServerMessage,
+  ClientMessage,
   Connect,
   MessageServer,
+  MessageClient,
 } from "./interfaces";
 
 const server = {
@@ -23,7 +24,7 @@ rl.question("Informe seu nome: ", (answer) => {
   connectServer();
 });
 
-function sendMessage(message: AnyMessageServer) {
+function sendMessage(message: ClientMessage) {
   const buffer = Buffer.from(JSON.stringify(message));
 
   client.send(buffer, 0, buffer.length, server.port, server.host);
@@ -42,28 +43,28 @@ function connectServer() {
   });
 
   client.on("message", (message) => {
-    const unbufferedMessage = JSON.parse(String(message)) as AnyMessageClient;
+    const unbufferedMessage = JSON.parse(String(message)) as ServerMessage;
 
     switch (unbufferedMessage.type) {
       case "conectionSuccessful":
         console.log(
-          `Você foi conectado com o IP: ${unbufferedMessage.address}`
+          `Você foi conectado com o IP: ${unbufferedMessage.client.address}`
         );
         console.log(`(Digite "exit" para encerrar) \n`);
-        rl.setPrompt(`${unbufferedMessage.address} | ${userName}: `);
+        rl.setPrompt(`${unbufferedMessage.client.address} | ${userName}: `);
         startChat();
         break;
       case "newConnection":
         output.clearLine(0);
         output.cursorTo(0);
-        console.log(`O usuario ${unbufferedMessage.author} se conectou \n`);
+        console.log(`O usuario ${unbufferedMessage.client} se conectou \n`);
         rl.prompt();
         break;
       case "message":
         output.clearLine(0);
         output.cursorTo(0);
         console.log(
-          `Mensagem recebida de ${unbufferedMessage.address} | ${unbufferedMessage.author}: ${unbufferedMessage.message}`
+          `Mensagem recebida de ${unbufferedMessage.client.address} | ${unbufferedMessage.client.author}: ${unbufferedMessage.message}`
         );
         rl.prompt();
         break;
@@ -99,8 +100,7 @@ function startChat() {
       return rl.write("Mensagem Inválida");
     }
 
-    const message: MessageServer = {
-      author: userName,
+    const message: MessageClient = {
       message: input,
       type: "message",
     };

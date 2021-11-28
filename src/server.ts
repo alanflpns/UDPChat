@@ -3,8 +3,8 @@ import dgram from "dgram";
 import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
 import {
-  AnyMessageClient,
-  AnyMessageServer,
+  ClientMessage,
+  ServerMessage,
   ConnectionSuccessful,
   Client,
 } from "./interfaces";
@@ -33,7 +33,7 @@ const address = "25.8.147.114";
 
 const clients: Client[] = [];
 
-const broadcast = (message: AnyMessageClient, sendingUser?: Client) => {
+const broadcast = (message: ServerMessage, sendingUser?: Client) => {
   const clientsToSend = sendingUser
     ? clients.filter(
         (client) =>
@@ -45,7 +45,7 @@ const broadcast = (message: AnyMessageClient, sendingUser?: Client) => {
   clientsToSend.map((client) => sendUniqueMessage(message, client));
 };
 
-function sendUniqueMessage(message: AnyMessageClient, client: Client) {
+function sendUniqueMessage(message: ServerMessage, client: Client) {
   const msgBuffered = Buffer.from(JSON.stringify(message));
 
   return server.send(
@@ -66,7 +66,7 @@ server.bind({
 
 server.on("message", (message, rinfo) => {
   console.log(String(message));
-  const unbufferedMessage = JSON.parse(String(message)) as AnyMessageServer;
+  const unbufferedMessage = JSON.parse(String(message)) as ClientMessage;
 
   const client = clients.find(
     (client) => client.address == rinfo.address && client.port == rinfo.port
@@ -79,17 +79,14 @@ server.on("message", (message, rinfo) => {
       broadcast(
         {
           type: "newConnection",
-          message: `Nova conexão: ${newClient.address} | ${newClient.author}`,
-          author: newClient.author,
+          client: newClient,
         },
         newClient
       );
 
       const connectionInfo: ConnectionSuccessful = {
         type: "conectionSuccessful",
-        address: rinfo.address,
-        port: rinfo.port,
-        author: client ? client.author : "",
+        client: newClient,
       };
       sendUniqueMessage(connectionInfo, newClient);
 
@@ -99,7 +96,7 @@ server.on("message", (message, rinfo) => {
         {
           type: "message",
           message: unbufferedMessage.message,
-          author: client ? client.author : "",
+          client: client!,
         },
         client
       );
@@ -117,7 +114,7 @@ server.on("message", (message, rinfo) => {
         {
           type: "message",
           message: `Desconectado: ${rinfo.address}:${rinfo.port}`,
-          author: client ? client.author : "",
+          client: client!,
         },
         client
       );

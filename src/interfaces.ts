@@ -1,38 +1,50 @@
 import { RemoteInfo } from "dgram";
 
-interface GenericMessage<T = string> {
-  type: T;
+/* -------------------------------------------------------------------------- */
+/*                                Generic Types                               */
+/* -------------------------------------------------------------------------- */
+export interface Client extends RemoteInfo {
   author: string;
 }
 
-export interface Connect extends GenericMessage<"connect"> {}
-
-export interface MessageServer extends GenericMessage<"message"> {
-  message: string;
+interface GenericMessage<T = string> {
+  type: T;
 }
-export interface Disconnect extends GenericMessage<"disconnect"> {}
 
-export type AnyMessageServer = Connect | MessageServer | Disconnect;
+/* -------------------------------------------------------------------------- */
+/*                                Client types                                */
+/* -------------------------------------------------------------------------- */
 
-export interface ConnectionSuccessful
-  extends GenericMessage<"conectionSuccessful"> {
-  address: string;
-  port: number;
+export interface Connect extends GenericMessage<"connect"> {
+  author: string;
 }
 
 export interface MessageClient extends GenericMessage<"message"> {
   message: string;
 }
+export interface Disconnect extends GenericMessage<"disconnect"> {}
 
-export interface NewConnection extends GenericMessage<"newConnection"> {
+export type ClientMessage = Connect | MessageClient | Disconnect;
+
+/* -------------------------------------------------------------------------- */
+/*                                Server Types                                */
+/* -------------------------------------------------------------------------- */
+
+export interface ConnectionSuccessful
+  extends GenericMessage<"conectionSuccessful"> {
+  client: Client;
+}
+
+export interface MessageServer extends GenericMessage<"message"> {
+  client: Client;
   message: string;
 }
 
-export type AnyMessageClient =
-  | ConnectionSuccessful
-  | MessageClient
-  | NewConnection;
-
-export interface Client extends RemoteInfo {
-  author: string;
+export interface NewConnection extends GenericMessage<"newConnection"> {
+  client: Client;
 }
+
+export type ServerMessage =
+  | ConnectionSuccessful
+  | MessageServer
+  | NewConnection;
