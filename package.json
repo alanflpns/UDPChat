@@ -4,7 +4,9 @@
   "main": "index.ts",
   "license": "MIT",
   "scripts": {
-    "dev": "nodemon --watch 'src/' --exec 'ts-node src/app.ts' -e ts"
+    "dev": "nodemon --watch 'src/' --exec 'ts-node src/app.ts' -e ts",
+    "client": "nodemon --watch 'src/' --exec 'ts-node src/client.ts' -e ts",
+    "server": "nodemon --watch 'src/' --exec 'ts-node src/server.ts' -e ts"
   },
   "devDependencies": {
     "@types/node": "^16.11.10",
