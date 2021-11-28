@@ -28,7 +28,7 @@ function connectServer() {
   client.on("listening", (teste: any) => {
     const connect: Connect = {
       type: "connect",
-      auth: userName,
+      author: userName,
     };
 
     const buffer = Buffer.from(JSON.stringify(connect));

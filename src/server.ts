@@ -2,7 +2,7 @@ import dgram from "dgram";
 
 import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
-import { AnyMessage } from "./interfaces";
+import { AnyMessage, ConnectionSuccessful } from "./interfaces";
 // import { networkInterfaces } from "os";
 
 // const nets = networkInterfaces();
@@ -29,8 +29,6 @@ const address = "25.8.147.114";
 const clients: dgram.RemoteInfo[] = [];
 
 const broadcast = (msg: string, sendingUser?: dgram.RemoteInfo) => {
-  const msgBuffered = Buffer.from(msg);
-
   const clientsToSend = sendingUser
     ? clients.filter(
         (client) =>
@@ -39,16 +37,20 @@ const broadcast = (msg: string, sendingUser?: dgram.RemoteInfo) => {
       )
     : clients;
 
-  clientsToSend.map((client) => {
-    server.send(
-      msgBuffered,
-      0,
-      msgBuffered.length,
-      client.port,
-      client.address
-    );
-  });
+  clientsToSend.map((client) => sendUniqueMessage(msg, client));
 };
+
+function sendUniqueMessage(message: string, client: dgram.RemoteInfo) {
+  const msgBuffered = Buffer.from(message);
+
+  return server.send(
+    msgBuffered,
+    0,
+    msgBuffered.length,
+    client.port,
+    client.address
+  );
+}
 
 const server = dgram.createSocket("udp4");
 
@@ -67,7 +69,16 @@ server.on("message", (message, rinfo) => {
   switch (unbufferedMessage.type) {
     case "connect":
       clients.push(rinfo);
+      console.log(unbufferedMessage);
       broadcast(`Nova conexão: ${rinfo.address}:${rinfo.port}`, rinfo);
+
+      const connectionInfo: ConnectionSuccessful = {
+        type: "conectionSuccessful",
+        address: rinfo.address,
+        port: rinfo.port,
+      };
+      sendUniqueMessage(connectionInfo.toString(), rinfo);
+
       break;
     case "message":
       broadcast(
