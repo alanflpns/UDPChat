@@ -57,14 +57,16 @@ function connectServer() {
       case "newConnection":
         output.clearLine(0);
         output.cursorTo(0);
-        console.log(`O usuario ${unbufferedMessage.client} se conectou \n`);
+        console.log(
+          `O usuario ${unbufferedMessage.client.author} se conectou \n`
+        );
         rl.prompt();
         break;
       case "message":
         output.clearLine(0);
         output.cursorTo(0);
         console.log(
-          `Mensagem recebida de ${unbufferedMessage.client.address} | ${unbufferedMessage.client.author}: ${unbufferedMessage.message}`
+          `${unbufferedMessage.client.address} | ${unbufferedMessage.client.author}: ${unbufferedMessage.message}`
         );
         rl.prompt();
         break;
