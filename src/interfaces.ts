@@ -6,6 +6,7 @@ interface GenericMessage<T = string> {
 }
 
 export interface Connect extends GenericMessage<"connect"> {}
+
 export interface MessageServer extends GenericMessage<"message"> {
   message: string;
 }
@@ -23,7 +24,14 @@ export interface MessageClient extends GenericMessage<"message"> {
   message: string;
 }
 
-export type AnyMessageClient = ConnectionSuccessful | MessageClient;
+export interface NewConnection extends GenericMessage<"newConnection"> {
+  message: string;
+}
+
+export type AnyMessageClient =
+  | ConnectionSuccessful
+  | MessageClient
+  | NewConnection;
 
 export interface Client extends RemoteInfo {
   author: string;

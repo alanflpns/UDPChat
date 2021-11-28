@@ -78,8 +78,8 @@ server.on("message", (message, rinfo) => {
       clients.push(newClient);
       broadcast(
         {
-          type: "message",
-          message: `Nova conexão: ${rinfo.address}:${rinfo.port}`,
+          type: "newConnection",
+          message: `Nova conexão: ${newClient.address} | ${newClient.author}`,
           author: newClient.author,
         },
         newClient
@@ -98,7 +98,7 @@ server.on("message", (message, rinfo) => {
       broadcast(
         {
           type: "message",
-          message: `Nova conexão: ${rinfo.address}:${rinfo.port} \n${unbufferedMessage.message}`,
+          message: unbufferedMessage.message,
           author: client ? client.author : "",
         },
         client
