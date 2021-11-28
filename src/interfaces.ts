@@ -1,10 +1,11 @@
+import { RemoteInfo } from "dgram";
+
 interface GenericMessage<T = string> {
   type: T;
-}
-
-export interface Connect extends GenericMessage<"connect"> {
   author: string;
 }
+
+export interface Connect extends GenericMessage<"connect"> {}
 export interface MessageServer extends GenericMessage<"message"> {
   message: string;
 }
@@ -23,3 +24,7 @@ export interface MessageClient extends GenericMessage<"message"> {
 }
 
 export type AnyMessageClient = ConnectionSuccessful | MessageClient;
+
+export interface Client extends RemoteInfo {
+  author: string;
+}

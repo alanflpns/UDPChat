@@ -6,6 +6,7 @@ import {
   AnyMessageClient,
   AnyMessageServer,
   ConnectionSuccessful,
+  Client,
 } from "./interfaces";
 // import { networkInterfaces } from "os";
 
@@ -30,12 +31,9 @@ const closeShortcut = "server close";
 const port = 5000;
 const address = "25.8.147.114";
 
-const clients: dgram.RemoteInfo[] = [];
+const clients: Client[] = [];
 
-const broadcast = (
-  message: AnyMessageClient,
-  sendingUser?: dgram.RemoteInfo
-) => {
+const broadcast = (message: AnyMessageClient, sendingUser?: Client) => {
   const clientsToSend = sendingUser
     ? clients.filter(
         (client) =>
@@ -47,10 +45,7 @@ const broadcast = (
   clientsToSend.map((client) => sendUniqueMessage(message, client));
 };
 
-function sendUniqueMessage(
-  message: AnyMessageClient,
-  client: dgram.RemoteInfo
-) {
+function sendUniqueMessage(message: AnyMessageClient, client: Client) {
   const msgBuffered = Buffer.from(JSON.stringify(message));
 
   return server.send(
@@ -70,25 +65,33 @@ server.bind({
 });
 
 server.on("message", (message, rinfo) => {
+  console.log(String(message));
   const unbufferedMessage = JSON.parse(String(message)) as AnyMessageServer;
+
+  const client = clients.find(
+    (client) => client.address == rinfo.address && client.port == rinfo.port
+  );
 
   switch (unbufferedMessage.type) {
     case "connect":
-      clients.push(rinfo);
+      const newClient: Client = { author: unbufferedMessage.author, ...rinfo };
+      clients.push(newClient);
       broadcast(
         {
           type: "message",
           message: `Nova conexão: ${rinfo.address}:${rinfo.port}`,
+          author: newClient.author,
         },
-        rinfo
+        newClient
       );
 
       const connectionInfo: ConnectionSuccessful = {
         type: "conectionSuccessful",
         address: rinfo.address,
         port: rinfo.port,
+        author: client ? client.author : "",
       };
-      sendUniqueMessage(connectionInfo, rinfo);
+      sendUniqueMessage(connectionInfo, newClient);
 
       break;
     case "message":
@@ -96,8 +99,9 @@ server.on("message", (message, rinfo) => {
         {
           type: "message",
           message: `Nova conexão: ${rinfo.address}:${rinfo.port} \n${unbufferedMessage.message}`,
+          author: client ? client.author : "",
         },
-        rinfo
+        client
       );
       break;
     case "disconnect":
@@ -113,8 +117,9 @@ server.on("message", (message, rinfo) => {
         {
           type: "message",
           message: `Desconectado: ${rinfo.address}:${rinfo.port}`,
+          author: client ? client.author : "",
         },
-        rinfo
+        client
       );
     default:
       console.log(unbufferedMessage);
