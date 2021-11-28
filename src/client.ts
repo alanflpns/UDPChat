@@ -2,7 +2,12 @@ import dgram from "dgram";
 import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
 
-import { AnyMessageClient, Connect } from "./interfaces";
+import {
+  AnyMessageClient,
+  AnyMessageServer,
+  Connect,
+  MessageServer,
+} from "./interfaces";
 
 const server = {
   host: "25.8.147.114",
@@ -18,6 +23,12 @@ rl.question("Informe seu nome: ", (answer) => {
   connectServer();
 });
 
+function sendMessage(message: AnyMessageServer) {
+  const buffer = Buffer.from(JSON.stringify(message));
+
+  client.send(buffer, 0, buffer.length, server.port, server.host);
+}
+
 function connectServer() {
   client.bind();
 
@@ -27,13 +38,7 @@ function connectServer() {
       author: userName,
     };
 
-    const buffer = Buffer.from(JSON.stringify(connect));
-
-    // console.log(infoUser);
-
-    // console.log( `` "Cliente conectou-se a porta:.", client.address().port);
-    // console.log('(Digite "exit" para encerrar)');
-    client.send(buffer, 0, buffer.length, server.port, server.host);
+    sendMessage(connect);
   });
 
   client.on("message", (message) => {
@@ -48,26 +53,41 @@ function connectServer() {
         rl.setPrompt(`${unbufferedMessage.address} | ${userName}: `);
         startChat();
         break;
+      case "newConnection":
+        output.clearLine(0);
+        output.cursorTo(0);
+        console.log(`O usuario ${unbufferedMessage.author} se conectou \n`);
+        rl.prompt();
+        break;
+      case "message":
+        output.clearLine(0);
+        output.cursorTo(0);
+        console.log(
+          `Mensagem recebida de ${unbufferedMessage.address} | ${unbufferedMessage.author}: ${unbufferedMessage.message}`
+        );
+        rl.prompt();
+        break;
       default:
         console.log(unbufferedMessage);
         break;
     }
   });
 
-  client.on("error", (err) => {
-    console.log(err);
-  });
+  // client.on("error", (err) => {
+  //   console.log(err);
+  // });
 
-  client.on("close", function () {
-    const close = {
-      type: "disconnect",
-      author: userName,
-    };
-    const buffer = Buffer.from(JSON.stringify(close));
+  // client.on("close", function () {
+  //   const close:  = {
+  //     type: "disconnect",
+  //     author: userName,
+  //   };
+  //   const buffer = Buffer.from(JSON.stringify(close));
 
-    console.log("Você foi desconectado", client.address().port);
-    client.send(buffer, 0, buffer.length, server.port, server.host);
-  });
+  //   console.log("Você foi desconectado", client.address().port);
+  //   sendMessage(close);
+  //   client.send(buffer, 0, buffer.length, server.port, server.host);
+  // });
 }
 
 function startChat() {
@@ -79,9 +99,13 @@ function startChat() {
       return rl.write("Mensagem Inválida");
     }
 
-    client.send(input, server.port, (err) => {
-      if (err) console.log(err?.message);
-    });
+    const message: MessageServer = {
+      author: userName,
+      message: input,
+      type: "message",
+    };
+
+    sendMessage(message);
   });
 }
 // function Command() {
