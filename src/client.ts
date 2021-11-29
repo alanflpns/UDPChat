@@ -125,7 +125,7 @@ function startChat() {
           type: "message",
         };
         sendMessage(message);
-        close;
+        break;
     }
   });
 }
