@@ -31,8 +31,18 @@ function sendMessage(
 ) {
   const buffer = Buffer.from(JSON.stringify(message));
 
-  client.send(buffer, 0, buffer.length, server.port, server.host);
-  if (options?.closeServerAfterSendMessage) client.close();
+  client.send(buffer, 0, buffer.length, server.port, server.host, () => {
+    if (options?.closeServerAfterSendMessage) {
+      client.close();
+      writeMsgTerminal("Conexão encerrada com sucesso!");
+    }
+  });
+}
+
+function writeMsgTerminal(message: string) {
+  output.clearLine(0);
+  output.cursorTo(0);
+  console.log(message);
 }
 
 function connectServer() {
@@ -60,20 +70,22 @@ function connectServer() {
         startChat();
         break;
       case "newConnection":
-        output.clearLine(0);
-        output.cursorTo(0);
-        console.log(
+        writeMsgTerminal(
           `O usuario ${unbufferedMessage.client.author} se conectou \n`
         );
         rl.prompt();
         break;
       case "message":
-        output.clearLine(0);
-        output.cursorTo(0);
-        console.log(
+        writeMsgTerminal(
           `${unbufferedMessage.client.address} | ${unbufferedMessage.client.author}: ${unbufferedMessage.message}`
         );
         rl.prompt();
+        break;
+      case "disconnect":
+        client.close();
+        writeMsgTerminal(
+          `A conexão foi encerrada por ${unbufferedMessage.client.author}!`
+        );
         break;
       default:
         console.log(unbufferedMessage);
@@ -86,7 +98,8 @@ function connectServer() {
   });
 
   client.on("close", function () {
-    console.log("A conexão foi encerrada");
+    rl.close();
+    console.log('Pressione "Ctrl + C" para encerrar.');
   });
 }
 
@@ -104,7 +117,6 @@ function startChat() {
         const messageDisconnect: DisconnectFromServer = {
           type: "disconnect",
         };
-        rl.close();
         sendMessage(messageDisconnect, { closeServerAfterSendMessage: true });
         break;
       default:
