@@ -22,9 +22,9 @@ export interface Connect extends GenericMessage<"connect"> {
 export interface MessageClient extends GenericMessage<"message"> {
   message: string;
 }
-export interface Disconnect extends GenericMessage<"disconnect"> {}
+export interface DisconnectFromServer extends GenericMessage<"disconnect"> {}
 
-export type ClientMessage = Connect | MessageClient | Disconnect;
+export type ClientMessage = Connect | MessageClient | DisconnectFromServer;
 
 /* -------------------------------------------------------------------------- */
 /*                                Server Types                                */
