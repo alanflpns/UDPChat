@@ -44,7 +44,12 @@ export interface NewConnection extends GenericMessage<"newConnection"> {
   client: Client;
 }
 
+export interface DisconnectClients extends GenericMessage<"disconnect"> {
+  client: Client;
+}
+
 export type ServerMessage =
   | ConnectionSuccessful
   | MessageServer
-  | NewConnection;
+  | NewConnection
+  | DisconnectClients;
