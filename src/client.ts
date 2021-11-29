@@ -1,6 +1,7 @@
 import dgram from "dgram";
 import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
+import dotenv, { config } from "dotenv";
 
 import {
   ServerMessage,
@@ -10,9 +11,11 @@ import {
   DisconnectFromServer,
 } from "./interfaces";
 
+dotenv.config();
+
 const server = {
-  host: "25.8.147.114",
-  port: 5000,
+  host: process.env.ADDRESS,
+  port: Number(process.env.PORT),
 };
 
 const closeServer = "exit";

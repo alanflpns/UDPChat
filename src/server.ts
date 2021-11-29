@@ -2,6 +2,8 @@ import dgram from "dgram";
 
 import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
+import dotenv from "dotenv";
+
 import {
   ClientMessage,
   ServerMessage,
@@ -9,6 +11,7 @@ import {
   Client,
 } from "./interfaces";
 
+dotenv.config();
 // import { networkInterfaces } from "os";
 
 // const nets = networkInterfaces();
@@ -29,8 +32,8 @@ import {
 
 // const closeShortcut = "server close";
 
-const port = 5000;
-const address = "25.8.147.114";
+const port = Number(process.env.PORT);
+const address = process.env.ADDRESS;
 
 const clients: Client[] = [];
 
