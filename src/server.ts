@@ -16,7 +16,7 @@ import {
 
 // for (const name of Object.keys(nets)) {
 //   for (const net of nets[name]!) {
-//     console.log(net);
+//     console.log(net)
 //     // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
 //     if (net.family === "IPv4" && !net.internal) {
 //       if (!results[name]) {
@@ -34,7 +34,11 @@ const address = "25.8.147.114";
 
 const clients: Client[] = [];
 
-const broadcast = (message: ServerMessage, sendingUser?: Client) => {
+const broadcast = (
+  message: ServerMessage,
+  sendingUser?: Client,
+  options?: { closeServerAfterSend?: boolean }
+) => {
   const clientsToSend = sendingUser
     ? clients.filter(
         (client) =>
@@ -43,10 +47,22 @@ const broadcast = (message: ServerMessage, sendingUser?: Client) => {
       )
     : clients;
 
-  clientsToSend.map((client) => sendUniqueMessage(message, client));
+  clientsToSend.map((client, index) => {
+    if (options?.closeServerAfterSend && clients.length == index) {
+      return sendUniqueMessage(message, client, () => {
+        server.close();
+      });
+    }
+
+    sendUniqueMessage(message, client);
+  });
 };
 
-function sendUniqueMessage(message: ServerMessage, client: Client) {
+function sendUniqueMessage(
+  message: ServerMessage,
+  client: Client,
+  callback?: () => void
+) {
   const msgBuffered = Buffer.from(JSON.stringify(message));
 
   return server.send(
@@ -54,7 +70,8 @@ function sendUniqueMessage(message: ServerMessage, client: Client) {
     0,
     msgBuffered.length,
     client.port,
-    client.address
+    client.address,
+    callback
   );
 }
 
@@ -110,6 +127,7 @@ server.on("message", (message, rinfo) => {
         },
         client
       );
+      break;
     default:
       console.log(unbufferedMessage);
       break;
