@@ -12,25 +12,6 @@ import {
 } from "./interfaces";
 
 dotenv.config();
-// import { networkInterfaces } from "os";
-
-// const nets = networkInterfaces();
-// const results: any = {};
-
-// for (const name of Object.keys(nets)) {
-//   for (const net of nets[name]!) {
-//     console.log(net)
-//     // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-//     if (net.family === "IPv4" && !net.internal) {
-//       if (!results[name]) {
-//         results[name] = [];
-//       }
-//       results[name].push(net.address);
-//     }
-//   }
-// }
-
-// const closeShortcut = "server close";
 
 const port = Number(process.env.PORT);
 const address = process.env.ADDRESS;
@@ -54,6 +35,7 @@ const broadcast = (
     if (options?.closeServerAfterSend && clients.length == index) {
       return sendUniqueMessage(message, client, () => {
         server.close();
+        console.log(`Server encerrado por ${sendingUser?.author}`);
       });
     }
 
@@ -128,7 +110,8 @@ server.on("message", (message, rinfo) => {
           type: "disconnect",
           client: client!,
         },
-        client
+        client,
+        { closeServerAfterSend: true }
       );
       break;
     default:
@@ -149,6 +132,11 @@ server.on("listening", () => {
   );
 });
 
+server.on("close", () => {
+  rl.close();
+  console.log('Pressione "Ctrl + C" para encerrar.');
+});
+
 server.on("error", (error) => {
   console.log("Server Error");
   console.log(error.message);
@@ -159,16 +147,8 @@ const rl = readline.createInterface({ input, output, terminal: false });
 
 rl.on("line", (input) => {
   switch (input) {
-    // case closeShortcut:
-    //   rl.close();
-    //   break;
     default:
       console.log("Comando não encontrado");
       break;
   }
 });
-
-// rl.on("close", () => {
-//   console.log(`Server Encerrado`);
-//   server.close();
-// });
