@@ -5,7 +5,9 @@
   "license": "MIT",
   "scripts": {
     "client": "nodemon --watch 'src/' --exec 'ts-node src/client.ts' -e ts",
-    "server": "nodemon --watch 'src/' --exec 'ts-node src/server.ts' -e ts"
+    "server": "nodemon --watch 'src/' --exec 'ts-node src/server.ts' -e ts",
+    "start:server": "ts-node src/server.ts",
+    "start:client": "ts-node src/client.ts"
   },
   "devDependencies": {
     "@types/node": "^16.11.10",
