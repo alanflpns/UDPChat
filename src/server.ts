@@ -37,11 +37,7 @@ const multicast = (
   options?: { closeServerAfterSend?: boolean }
 ) => {
   const clientsToSend = sendingUser
-    ? clients.filter(
-        (client) =>
-          client.address != sendingUser.address ||
-          client.port != sendingUser.port
-      )
+    ? clients.filter((client) => toEqualClient(client, sendingUser))
     : clients;
 
   clientsToSend.map((client, index) => {
@@ -56,14 +52,30 @@ const multicast = (
   });
 };
 
+function broadcast(
+  message: ServerMessage,
+  clients: Client[],
+  sendingUser?: Client,
+  options?: { closeServerAfterSend?: boolean }
+) {
+  clients.map((client, index) => {
+    if (options?.closeServerAfterSend && clients.length == index) {
+      return unicast(message, client, () => {
+        server.close();
+        console.log(`Server encerrado por ${sendingUser?.author}`);
+      });
+    }
+
+    unicast(message, client);
+  });
+}
+
 function unicast(
   message: ServerMessage,
   client: Client,
   callback?: () => void
 ) {
   const msgBuffered = Buffer.from(JSON.stringify(message));
-
-  console.log(msgBuffered);
 
   return server.send(
     msgBuffered,
@@ -89,8 +101,6 @@ server.on("message", (message, rinfo) => {
   const client = clients.find(
     (client) => client.address == rinfo.address && client.port == rinfo.port
   );
-
-  if (!client) return null;
 
   switch (unbufferedMessage.type) {
     case "connect":
@@ -118,7 +128,7 @@ server.on("message", (message, rinfo) => {
         {
           type: "message",
           message: unbufferedMessage.message,
-          client: client,
+          client: client!,
         },
         client
       );
@@ -127,7 +137,7 @@ server.on("message", (message, rinfo) => {
       multicast(
         {
           type: "disconnect",
-          client: client,
+          client: client!,
         },
         client,
         { closeServerAfterSend: true }
@@ -135,24 +145,48 @@ server.on("message", (message, rinfo) => {
       break;
     case "list-users":
       const usersToSend = clients.filter((clientList) =>
-        toEqualClient(clientList, client)
+        toEqualClient(clientList, client!)
       );
-      unicast({ type: "list-users", clients: usersToSend }, client);
+
+      const usersAvailable = usersToSend.filter((clientList) =>
+        openedChats.some((openedChat) =>
+          openedChat.clients.some((chatUser) =>
+            toEqualClient(clientList, chatUser)
+          )
+        )
+      );
+
+      console.log(usersAvailable);
+      unicast({ type: "list-users", clients: usersAvailable }, client!);
       break;
     case "start-chat":
       const userHaveChat = openedChats.some((chat) =>
-        chat.clients.some((chatUser) => toEqualClient(chatUser, client))
+        chat.clients.some(
+          (chatUser) =>
+            toEqualClient(chatUser, client!) ||
+            toEqualClient(chatUser, unbufferedMessage.clientToConnect)
+        )
       );
 
       if (userHaveChat) {
         return unicast(
           {
             type: "server-error",
-            message: "O cliente já tem um chat ativo",
+            message: "Um dos clientes já está em um chat!",
           },
-          client
+          client!
         );
       }
+
+      const newChat: OpenedChat = {
+        clients: [client!, unbufferedMessage.clientToConnect],
+        id: generateId(),
+        startedAt: new Date(),
+      };
+
+      openedChats.push(newChat);
+
+      broadcast({ type: "start-chat", chat: newChat }, newChat.clients);
 
       break;
     default:

@@ -25,7 +25,7 @@ export interface ListUsers extends GenericMessage<"list-users"> {
 }
 
 export interface StartChat extends GenericMessage<"start-chat"> {
-  clientToConnect: Client;
+  chat: OpenedChat;
 }
 
 export interface NewConnection extends GenericMessage<"new-connection"> {
