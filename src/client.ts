@@ -4,12 +4,13 @@ import { stdin as input, stdout as output } from "process";
 import dotenv, { config } from "dotenv";
 
 import {
-  ServerMessage,
   ClientMessage,
   Connect,
   MessageClient,
   DisconnectFromServer,
-} from "./interfaces";
+} from "./types/client-types";
+
+import { ServerMessage } from "./types/server-types";
 
 dotenv.config();
 

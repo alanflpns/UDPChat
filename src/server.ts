@@ -4,12 +4,9 @@ import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
 import dotenv from "dotenv";
 
-import {
-  ClientMessage,
-  ServerMessage,
-  ConnectionSuccessful,
-  Client,
-} from "./interfaces";
+import { Client } from "./types/types";
+import { ConnectionSuccessful, ServerMessage } from "./types/server-types";
+import { ClientMessage } from "./types/client-types";
 
 dotenv.config();
 
@@ -18,7 +15,7 @@ const address = process.env.ADDRESS;
 
 const clients: Client[] = [];
 
-const broadcast = (
+const multicast = (
   message: ServerMessage,
   sendingUser?: Client,
   options?: { closeServerAfterSend?: boolean }
@@ -33,17 +30,17 @@ const broadcast = (
 
   clientsToSend.map((client, index) => {
     if (options?.closeServerAfterSend && clients.length == index) {
-      return sendUniqueMessage(message, client, () => {
+      return unicast(message, client, () => {
         server.close();
         console.log(`Server encerrado por ${sendingUser?.author}`);
       });
     }
 
-    sendUniqueMessage(message, client);
+    unicast(message, client);
   });
 };
 
-function sendUniqueMessage(
+function unicast(
   message: ServerMessage,
   client: Client,
   callback?: () => void
@@ -79,23 +76,23 @@ server.on("message", (message, rinfo) => {
     case "connect":
       const newClient: Client = { author: unbufferedMessage.author, ...rinfo };
       clients.push(newClient);
-      broadcast(
-        {
-          type: "newConnection",
-          client: newClient,
-        },
-        newClient
-      );
+      // multicast(
+      //   {
+      //     type: "newConnection",
+      //     client: newClient,
+      //   },
+      //   newClient
+      // );
 
       const connectionInfo: ConnectionSuccessful = {
         type: "conectionSuccessful",
         client: newClient,
       };
-      sendUniqueMessage(connectionInfo, newClient);
+      unicast(connectionInfo, newClient);
 
       break;
     case "message":
-      broadcast(
+      multicast(
         {
           type: "message",
           message: unbufferedMessage.message,
@@ -105,7 +102,7 @@ server.on("message", (message, rinfo) => {
       );
       break;
     case "disconnect":
-      broadcast(
+      multicast(
         {
           type: "disconnect",
           client: client!,
@@ -113,6 +110,9 @@ server.on("message", (message, rinfo) => {
         client,
         { closeServerAfterSend: true }
       );
+      break;
+    case "list-users":
+      unicast({ type: "list-users", clients }, client!);
       break;
     default:
       console.log(unbufferedMessage);
