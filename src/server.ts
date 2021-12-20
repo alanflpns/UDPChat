@@ -5,7 +5,11 @@ import { stdin as input, stdout as output } from "process";
 import dotenv from "dotenv";
 
 import { Client } from "./types/types";
-import { ConnectionSuccessful, ServerMessage } from "./types/server-types";
+import {
+  ConnectionSuccessful,
+  OpenedChat,
+  ServerMessage,
+} from "./types/server-types";
 import { ClientMessage } from "./types/client-types";
 
 dotenv.config();
@@ -14,6 +18,18 @@ const port = Number(process.env.PORT);
 const address = process.env.ADDRESS;
 
 const clients: Client[] = [];
+const openedChats: OpenedChat[] = [];
+
+function generateId() {
+  return `${Math.floor(Math.random() * Date.now())}`;
+}
+
+function toEqualClient(client: Client, clientToCompare: Client) {
+  return (
+    clientToCompare.address !== client?.address ||
+    clientToCompare.port !== client?.port
+  );
+}
 
 const multicast = (
   message: ServerMessage,
@@ -47,6 +63,8 @@ function unicast(
 ) {
   const msgBuffered = Buffer.from(JSON.stringify(message));
 
+  console.log(msgBuffered);
+
   return server.send(
     msgBuffered,
     0,
@@ -72,6 +90,8 @@ server.on("message", (message, rinfo) => {
     (client) => client.address == rinfo.address && client.port == rinfo.port
   );
 
+  if (!client) return null;
+
   switch (unbufferedMessage.type) {
     case "connect":
       const newClient: Client = { author: unbufferedMessage.author, ...rinfo };
@@ -84,11 +104,13 @@ server.on("message", (message, rinfo) => {
       //   newClient
       // );
 
-      const connectionInfo: ConnectionSuccessful = {
-        type: "conectionSuccessful",
-        client: newClient,
-      };
-      unicast(connectionInfo, newClient);
+      unicast(
+        {
+          type: "connection-successful",
+          client: newClient,
+        },
+        newClient
+      );
 
       break;
     case "message":
@@ -96,7 +118,7 @@ server.on("message", (message, rinfo) => {
         {
           type: "message",
           message: unbufferedMessage.message,
-          client: client!,
+          client: client,
         },
         client
       );
@@ -105,14 +127,33 @@ server.on("message", (message, rinfo) => {
       multicast(
         {
           type: "disconnect",
-          client: client!,
+          client: client,
         },
         client,
         { closeServerAfterSend: true }
       );
       break;
     case "list-users":
-      unicast({ type: "list-users", clients }, client!);
+      const usersToSend = clients.filter((clientList) =>
+        toEqualClient(clientList, client)
+      );
+      unicast({ type: "list-users", clients: usersToSend }, client);
+      break;
+    case "start-chat":
+      const userHaveChat = openedChats.some((chat) =>
+        chat.clients.some((chatUser) => toEqualClient(chatUser, client))
+      );
+
+      if (userHaveChat) {
+        return unicast(
+          {
+            type: "server-error",
+            message: "O cliente já tem um chat ativo",
+          },
+          client
+        );
+      }
+
       break;
     default:
       console.log(unbufferedMessage);

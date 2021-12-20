@@ -65,7 +65,7 @@ function connectServer() {
     const unbufferedMessage = JSON.parse(String(message)) as ServerMessage;
 
     switch (unbufferedMessage.type) {
-      case "conectionSuccessful":
+      case "connection-successful":
         console.log(
           `Você foi conectado com o IP: ${unbufferedMessage.client.address}`
         );
@@ -73,7 +73,7 @@ function connectServer() {
         rl.setPrompt(`${unbufferedMessage.client.address} | ${userName}: `);
         startChat();
         break;
-      case "newConnection":
+      case "new-connection":
         writeMsgTerminal(
           `O usuario ${unbufferedMessage.client.author} se conectou \n`
         );
