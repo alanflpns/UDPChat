@@ -2,13 +2,13 @@ import dgram from "dgram";
 import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
 import dotenv from "dotenv";
-import util from "util";
 
 import {
   ClientMessage,
   Connect,
   MessageClient,
   DisconnectFromServer,
+  DisconnectFromChat,
 } from "./types/client-types";
 
 import { ServerMessage } from "./types/server-types";
@@ -24,8 +24,10 @@ const server = {
 const closeServer = "exit";
 const rl = readline.createInterface({ input, output, terminal: false });
 const client = dgram.createSocket("udp4");
-
-const question = util.promisify(rl.question).bind(rl);
+// const ac1 = new AbortController();
+// let signal1 = ac1.signal;
+// const ac2 = new AbortController();
+// let signal2 = ac2.signal;
 
 let userName: string;
 
@@ -55,63 +57,65 @@ function writeMsgTerminal(message: string) {
 }
 
 async function questionStart() {
-  try {
-    const answer: any = await question(
-      "\n----- OPÇÕES ----- \n[1] Ver lista de usuários \n[2] Encerrar \nInforme uma opção: "
-    );
+  rl.question(
+    "\n----- OPÇÕES ----- \n[1] Ver lista de usuários \n[2] Aguardar contato \n[3] Encerrar \nInforme uma opção: ",
+    // { signal: signal1 },
+    (answer) => {
+      if (answer === "1") {
+        return sendMessage({ type: "list-users" });
+      }
 
-    if (answer === "1") {
-      return sendMessage({ type: "list-users" });
+      if (answer === "2") {
+        console.log("Aguardando contato...");
+        return sendMessage({ type: "wait-contact" });
+      }
+
+      if (answer === "3") {
+        const messageDisconnect: DisconnectFromServer = {
+          type: "disconnect",
+        };
+
+        return sendMessage(messageDisconnect, {
+          closeServerAfterSendMessage: true,
+        });
+      }
+
+      console.log("Essa opção não existe...");
+      questionStart();
     }
-
-    if (answer === "2") {
-      const messageDisconnect: DisconnectFromServer = {
-        type: "disconnect",
-      };
-
-      return sendMessage(messageDisconnect, {
-        closeServerAfterSendMessage: true,
-      });
-    }
-
-    console.log("Essa opção não existe...");
-    questionStart();
-  } catch (err) {
-    console.error("Question rejected", err);
-  }
+  );
 }
 
 async function questionConnectUser(users: Client[]) {
   if (users.length > 0) {
-    console.log("\n===== LISTA DE USUÁRIOS DISPONIVEIS =====");
+    console.log("\n===== LISTA DE USUÁRIOS DISPONIVEIS =====\n");
     users.map((user, index) => console.log(`[${index + 1}] ${user.author}`));
 
-    try {
-      const answer: any = await question(
-        `[${users.length + 1}] Aguardar contato \nInforme uma opção: `
-      );
-
-      if (
-        isNaN(Number(answer)) ||
-        Number(answer) < 1 ||
-        Number(answer) > users.length + 1
-      ) {
-        console.log("Essa opção não existe...");
-        questionConnectUser(users);
-      } else if (Number(answer) === users.length + 1) {
-        console.log("Aguardando contato...");
-      } else {
-        sendMessage({
-          type: "start-chat",
-          clientToConnect: users[Number(answer) - 1],
-        });
+    rl.question(
+      `[${users.length + 1}] Aguardar contato \nInforme uma opção: `,
+      // { signal: signal2 },
+      (answer) => {
+        if (
+          isNaN(Number(answer)) ||
+          Number(answer) < 1 ||
+          Number(answer) > users.length + 1
+        ) {
+          console.log("Essa opção não existe...");
+          questionConnectUser(users);
+        } else if (Number(answer) === users.length + 1) {
+          console.log("Aguardando contato...");
+          sendMessage({ type: "wait-contact" });
+        } else {
+          sendMessage({
+            type: "start-chat",
+            clientToConnect: users[Number(answer) - 1],
+          });
+        }
       }
-    } catch (err) {
-      console.error("Question rejected", err);
-    }
+    );
   } else {
     console.log("\nNenhum usuario disponivel atualmente...");
-    console.log("Aguardando contato...");
+    questionStart();
   }
 }
 
@@ -137,26 +141,6 @@ function connectServer() {
         );
 
         questionStart();
-        // while (option !== "1" || option !== "2") {
-        //   rl.question(
-        //     "----- OPÇÕES ----- \n[1] Iniciar uma conversa \n[2] Encerrar \n",
-        //     (answer) => {
-        //       option = answer;
-
-        //       if (answer !== 1 || answer !== 2) {
-        //       }
-        //       rl.setPrompt(
-        //         `${unbufferedMessage.client.address} | ${userName}: `
-        //       );
-        //       startChat();
-        //     }
-        //   );
-        // }
-
-        // console.log("----- OPÇÕES -----");
-        // console.log("[1] Iniciar uma conversa");
-        // console.log("[2] Encerrar");
-        // rl.question('')
 
         break;
       case "new-connection":
@@ -184,15 +168,15 @@ function connectServer() {
         const otherUser = unbufferedMessage.chat.clients.find(
           (user) => user.author !== userName
         );
-        // rl.close();
-
-        rl.resume();
+        // ac1.abort();
+        // ac2.abort();
 
         output.clearLine(0);
         output.cursorTo(0);
         console.log(
           `\n Um novo chat foi iniciado com ${otherUser?.address} | ${otherUser?.author}`
         );
+        console.log('\n(Digite "exit" para sair do chat)');
         rl.setPrompt(
           `${
             unbufferedMessage.chat.clients.find(
@@ -203,7 +187,20 @@ function connectServer() {
         startChat();
         break;
       case "server-error":
+        output.clearLine(0);
+        output.cursorTo(0);
         console.log(unbufferedMessage.message);
+        break;
+      case "disconnect-chat":
+        console.log("O chat foi encerrado...");
+        rl.setPrompt('')
+        output.clearLine(0);
+        output.cursorTo(0);
+        // const newAc1 = new AbortController();
+        // const newAc2 = new AbortController();
+        // signal1 = newAc1.signal;
+        // signal2 = newAc2.signal;
+        questionStart();
         break;
       default:
         console.log(unbufferedMessage);
@@ -231,10 +228,10 @@ function startChat() {
 
     switch (input) {
       case closeServer:
-        const messageDisconnect: DisconnectFromServer = {
-          type: "disconnect",
+        const messageDisconnect: DisconnectFromChat = {
+          type: "disconnect-chat",
         };
-        sendMessage(messageDisconnect, { closeServerAfterSendMessage: true });
+        sendMessage(messageDisconnect);
         break;
       default:
         const message: MessageClient = {
