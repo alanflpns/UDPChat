@@ -90,21 +90,24 @@ async function questionConnectUser(users: Client[]) {
   if (users.length > 0) {
     console.log("\n===== LISTA DE USUÁRIOS DISPONIVEIS =====\n");
     users.map((user, index) => console.log(`[${index + 1}] ${user.author}`));
-
     rl.question(
-      `[${users.length + 1}] Aguardar contato \nInforme uma opção: `,
+      `[${users.length + 1}] Aguardar contato \n[${
+        users.length + 2
+      }] Voltar \nInforme uma opção: `,
       // { signal: signal2 },
       (answer) => {
         if (
           isNaN(Number(answer)) ||
           Number(answer) < 1 ||
-          Number(answer) > users.length + 1
+          Number(answer) > users.length + 2
         ) {
           console.log("Essa opção não existe...");
           questionConnectUser(users);
         } else if (Number(answer) === users.length + 1) {
           console.log("Aguardando contato...");
           sendMessage({ type: "wait-contact" });
+        } else if (Number(answer) === users.length + 2) {
+          questionStart();
         } else {
           sendMessage({
             type: "start-chat",
@@ -177,13 +180,17 @@ function connectServer() {
           `\n Um novo chat foi iniciado com ${otherUser?.address} | ${otherUser?.author}`
         );
         console.log('\n(Digite "exit" para sair do chat)');
-        rl.setPrompt(
-          `${
-            unbufferedMessage.chat.clients.find(
-              (user) => user.author === userName
-            )?.address
-          } | ${userName}: `
-        );
+        rl.setPrompt("");
+        if (!rl.getPrompt().length) {
+          rl.setPrompt(
+            `${
+              unbufferedMessage.chat.clients.find(
+                (user) => user.author === userName
+              )?.address
+            } | ${userName}: `
+          );
+        }
+
         startChat();
         break;
       case "server-error":
@@ -193,7 +200,6 @@ function connectServer() {
         break;
       case "disconnect-chat":
         console.log("O chat foi encerrado...");
-        rl.setPrompt('')
         output.clearLine(0);
         output.cursorTo(0);
         // const newAc1 = new AbortController();
