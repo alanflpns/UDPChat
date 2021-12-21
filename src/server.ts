@@ -18,9 +18,9 @@ dotenv.config();
 const port = Number(process.env.PORT);
 const address = process.env.ADDRESS;
 
-const clients: Client[] = [];
-const clientsWaitingContact: Client[] = [];
-const openedChats: OpenedChat[] = [];
+let clients: Client[] = [];
+let clientsWaitingContact: Client[] = [];
+let openedChats: OpenedChat[] = [];
 
 function generateId() {
   return `${Math.floor(Math.random() * Date.now())}`;
@@ -143,10 +143,14 @@ function disconnectFromChat(client: Client, message: DisconnectFromChat) {
     );
   }
 
-  openedChats.splice(
+  const newOpenedChats = Array.from(openedChats);
+
+  newOpenedChats.splice(
     openedChats.findIndex((openedChat) => openedChat.id === chat.id),
     1
   );
+
+  openedChats = newOpenedChats;
 
   broadcast({ type: "disconnect-chat" }, chat.clients);
 }
@@ -167,14 +171,6 @@ function waitContact(client: Client, message: WaitContact) {
   }
 
   clientsWaitingContact.push(client);
-}
-
-function removeFromClients(client: Client, clientsList = clients) {
-  const index = clientsList.findIndex((clientFromList) =>
-    toEqualClient(clientFromList, client)
-  );
-
-  clientsList.splice(index, 1);
 }
 
 const server = dgram.createSocket("udp4");
@@ -264,9 +260,16 @@ server.on("message", (message, rinfo) => {
       };
 
       openedChats.push(newChat);
-      newChat.clients.map((clientFromChat) => {
-        removeFromClients(clientFromChat, clientsWaitingContact);
-      });
+      const newWaitingList = Array.from(clientsWaitingContact);
+
+      newWaitingList.splice(
+        newWaitingList.findIndex((clientFromList) =>
+          toEqualClient(clientFromList, unbufferedMessage.clientToConnect)
+        ),
+        1
+      );
+
+      clientsWaitingContact = newWaitingList;
 
       broadcast({ type: "start-chat", chat: newChat }, newChat.clients);
 
