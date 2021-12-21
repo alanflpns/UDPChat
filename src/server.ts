@@ -5,12 +5,12 @@ import { stdin as input, stdout as output } from "process";
 import dotenv from "dotenv";
 
 import { Client } from "./types/types";
+import { OpenedChat, ServerMessage } from "./types/server-types";
 import {
-  ConnectionSuccessful,
-  OpenedChat,
-  ServerMessage,
-} from "./types/server-types";
-import { ClientMessage } from "./types/client-types";
+  ClientMessage,
+  DisconnectFromChat,
+  MessageClient,
+} from "./types/client-types";
 
 dotenv.config();
 
@@ -26,8 +26,8 @@ function generateId() {
 
 function toEqualClient(client: Client, clientToCompare: Client) {
   return (
-    clientToCompare.address !== client?.address ||
-    clientToCompare.port !== client?.port
+    clientToCompare.address === client?.address &&
+    clientToCompare.port === client?.port
   );
 }
 
@@ -87,6 +87,68 @@ function unicast(
   );
 }
 
+function findChatByClient(client: Client, chats = openedChats) {
+  const chat = chats.find((chat) =>
+    chat.clients.some((chatClient) => toEqualClient(chatClient, client))
+  );
+
+  return chat;
+}
+
+function findChatById(id: string, chats: OpenedChat[]) {
+  const chat = chats.find((chat) => chat.id === id);
+
+  return chat;
+}
+
+function sendMessageInChat(client: Client, message: MessageClient) {
+  const chat = findChatByClient(client!, openedChats);
+
+  if (!chat) {
+    return unicast(
+      {
+        type: "server-error",
+        message: "Você não se encontra em nenhum chat no momento!",
+      },
+      client!
+    );
+  }
+
+  const usersToSend = chat.clients.filter(
+    (chatClient) => !toEqualClient(chatClient, client!)
+  );
+
+  broadcast(
+    {
+      type: "message",
+      message: message.message,
+      client: client!,
+    },
+    usersToSend
+  );
+}
+
+function disconnectFromChat(client: Client, message: DisconnectFromChat) {
+  const chat = findChatByClient(client);
+
+  if (!chat) {
+    return unicast(
+      {
+        type: "server-error",
+        message: "Você não se encontra em nenhum chat no momento!",
+      },
+      client
+    );
+  }
+
+  openedChats.splice(
+    openedChats.findIndex((openedChat) => openedChat.id === chat.id),
+    1
+  );
+
+  broadcast({ type: "disconnect-chat" }, chat.clients);
+}
+
 const server = dgram.createSocket("udp4");
 
 server.bind({
@@ -106,13 +168,6 @@ server.on("message", (message, rinfo) => {
     case "connect":
       const newClient: Client = { author: unbufferedMessage.author, ...rinfo };
       clients.push(newClient);
-      // multicast(
-      //   {
-      //     type: "newConnection",
-      //     client: newClient,
-      //   },
-      //   newClient
-      // );
 
       unicast(
         {
@@ -124,14 +179,8 @@ server.on("message", (message, rinfo) => {
 
       break;
     case "message":
-      multicast(
-        {
-          type: "message",
-          message: unbufferedMessage.message,
-          client: client!,
-        },
-        client
-      );
+      if (!client) return;
+      sendMessageInChat(client, unbufferedMessage);
       break;
     case "disconnect":
       multicast(
@@ -144,19 +193,14 @@ server.on("message", (message, rinfo) => {
       );
       break;
     case "list-users":
-      const usersToSend = clients.filter((clientList) =>
-        toEqualClient(clientList, client!)
-      );
-
-      const usersAvailable = usersToSend.filter((clientList) =>
-        openedChats.some((openedChat) =>
-          openedChat.clients.some((chatUser) =>
-            toEqualClient(clientList, chatUser)
+      const usersAvailable = clients.filter(
+        (clientList) =>
+          !(
+            toEqualClient(clientList, client!) ||
+            findChatByClient(clientList, openedChats)
           )
-        )
       );
 
-      console.log(usersAvailable);
       unicast({ type: "list-users", clients: usersAvailable }, client!);
       break;
     case "start-chat":
@@ -188,6 +232,10 @@ server.on("message", (message, rinfo) => {
 
       broadcast({ type: "start-chat", chat: newChat }, newChat.clients);
 
+      break;
+    case "disconnect-chat":
+      if (!client) return;
+      disconnectFromChat(client, unbufferedMessage);
       break;
     default:
       console.log(unbufferedMessage);

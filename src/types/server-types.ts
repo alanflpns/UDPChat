@@ -36,6 +36,8 @@ export interface DisconnectClients extends GenericMessage<"disconnect"> {
   client: Client;
 }
 
+export interface DisconnectFromChat extends GenericMessage<"disconnect-chat"> {}
+
 export interface ServerError extends GenericMessage<"server-error"> {
   message: string;
 }
@@ -47,4 +49,5 @@ export type ServerMessage =
   | DisconnectClients
   | ListUsers
   | StartChat
-  | ServerError;
+  | ServerError
+  | DisconnectFromChat;

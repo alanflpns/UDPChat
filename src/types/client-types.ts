@@ -17,6 +17,8 @@ export interface StartChat extends GenericMessage<"start-chat"> {
 export interface MessageClient extends GenericMessage<"message"> {
   message: string;
 }
+export interface DisconnectFromChat extends GenericMessage<"disconnect-chat"> {}
+
 export interface DisconnectFromServer extends GenericMessage<"disconnect"> {}
 
 export type ClientMessage =
@@ -24,4 +26,5 @@ export type ClientMessage =
   | MessageClient
   | DisconnectFromServer
   | ListUsers
-  | StartChat;
+  | StartChat
+  | DisconnectFromChat;
