@@ -214,14 +214,14 @@ server.on("message", (message, rinfo) => {
         1
       );
 
-      multicast(
-        {
-          type: "disconnect",
-          client: client!,
-        },
-        client,
-        { closeServerAfterSend: true }
-      );
+      // multicast(
+      //   {
+      //     type: "disconnect",
+      //     client: client!,
+      //   },
+      //   client,
+      //   { closeServerAfterSend: true }
+      // );
       break;
     case "list-users":
       const usersAvailable = clientsWaitingContact.filter(
