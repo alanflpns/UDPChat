@@ -1,7 +1,8 @@
 import dgram from "dgram";
 import * as readline from "readline";
 import { stdin as input, stdout as output } from "process";
-import dotenv, { config } from "dotenv";
+import dotenv from "dotenv";
+import util from "util";
 
 import {
   ClientMessage,
@@ -11,6 +12,7 @@ import {
 } from "./types/client-types";
 
 import { ServerMessage } from "./types/server-types";
+import { Client } from "./types/types";
 
 dotenv.config();
 
@@ -23,7 +25,10 @@ const closeServer = "exit";
 const rl = readline.createInterface({ input, output, terminal: false });
 const client = dgram.createSocket("udp4");
 
+const question = util.promisify(rl.question).bind(rl);
+
 let userName: string;
+
 rl.question("Informe seu nome: ", (answer) => {
   userName = answer;
   connectServer();
@@ -49,6 +54,67 @@ function writeMsgTerminal(message: string) {
   console.log(message);
 }
 
+async function questionStart() {
+  try {
+    const answer: any = await question(
+      "\n----- OPÇÕES ----- \n[1] Ver lista de usuários \n[2] Encerrar \nInforme uma opção: "
+    );
+
+    if (answer === "1") {
+      return sendMessage({ type: "list-users" });
+    }
+
+    if (answer === "2") {
+      const messageDisconnect: DisconnectFromServer = {
+        type: "disconnect",
+      };
+
+      return sendMessage(messageDisconnect, {
+        closeServerAfterSendMessage: true,
+      });
+    }
+
+    console.log("Essa opção não existe...");
+    questionStart();
+  } catch (err) {
+    console.error("Question rejected", err);
+  }
+}
+
+async function questionConnectUser(users: Client[]) {
+  if (users.length > 0) {
+    console.log("\n===== LISTA DE USUÁRIOS DISPONIVEIS =====");
+    users.map((user, index) => console.log(`[${index + 1}] ${user.author}`));
+
+    try {
+      const answer: any = await question(
+        `[${users.length + 1}] Aguardar contato \nInforme uma opção: `
+      );
+
+      if (
+        isNaN(Number(answer)) ||
+        Number(answer) < 1 ||
+        Number(answer) > users.length + 1
+      ) {
+        console.log("Essa opção não existe...");
+        questionConnectUser(users);
+      } else if (Number(answer) === users.length + 1) {
+        console.log("Aguardando contato...");
+      } else {
+        sendMessage({
+          type: "start-chat",
+          clientToConnect: users[Number(answer) - 1],
+        });
+      }
+    } catch (err) {
+      console.error("Question rejected", err);
+    }
+  } else {
+    console.log("\nNenhum usuario disponivel atualmente...");
+    console.log("Aguardando contato...");
+  }
+}
+
 function connectServer() {
   client.bind();
 
@@ -67,11 +133,31 @@ function connectServer() {
     switch (unbufferedMessage.type) {
       case "connection-successful":
         console.log(
-          `Você foi conectado com o IP: ${unbufferedMessage.client.address}`
+          `Você foi conectado com o IP: ${unbufferedMessage.client.address} \n`
         );
-        console.log(`(Digite "exit" para encerrar) \n`);
-        rl.setPrompt(`${unbufferedMessage.client.address} | ${userName}: `);
-        startChat();
+
+        questionStart();
+        // while (option !== "1" || option !== "2") {
+        //   rl.question(
+        //     "----- OPÇÕES ----- \n[1] Iniciar uma conversa \n[2] Encerrar \n",
+        //     (answer) => {
+        //       option = answer;
+
+        //       if (answer !== 1 || answer !== 2) {
+        //       }
+        //       rl.setPrompt(
+        //         `${unbufferedMessage.client.address} | ${userName}: `
+        //       );
+        //       startChat();
+        //     }
+        //   );
+        // }
+
+        // console.log("----- OPÇÕES -----");
+        // console.log("[1] Iniciar uma conversa");
+        // console.log("[2] Encerrar");
+        // rl.question('')
+
         break;
       case "new-connection":
         writeMsgTerminal(
@@ -91,6 +177,34 @@ function connectServer() {
           `A conexão foi encerrada por ${unbufferedMessage.client.author}!`
         );
         break;
+      case "list-users":
+        questionConnectUser(unbufferedMessage.clients);
+        break;
+      case "start-chat":
+        const otherUser = unbufferedMessage.chat.clients.find(
+          (user) => user.author !== userName
+        );
+        // rl.close();
+
+        rl.resume();
+
+        output.clearLine(0);
+        output.cursorTo(0);
+        console.log(
+          `\n Um novo chat foi iniciado com ${otherUser?.address} | ${otherUser?.author}`
+        );
+        rl.setPrompt(
+          `${
+            unbufferedMessage.chat.clients.find(
+              (user) => user.author === userName
+            )?.address
+          } | ${userName}: `
+        );
+        startChat();
+        break;
+      case "server-error":
+        console.log(unbufferedMessage.message);
+        break;
       default:
         console.log(unbufferedMessage);
         break;
@@ -103,7 +217,6 @@ function connectServer() {
 
   client.on("close", function () {
     rl.close();
-    console.log('Pressione "Ctrl + C" para encerrar.');
   });
 }
 
