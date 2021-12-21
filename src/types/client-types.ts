@@ -21,10 +21,13 @@ export interface DisconnectFromChat extends GenericMessage<"disconnect-chat"> {}
 
 export interface DisconnectFromServer extends GenericMessage<"disconnect"> {}
 
+export interface WaitContact extends GenericMessage<"wait-contact"> {}
+
 export type ClientMessage =
   | Connect
   | MessageClient
   | DisconnectFromServer
   | ListUsers
   | StartChat
-  | DisconnectFromChat;
+  | DisconnectFromChat
+  | WaitContact;

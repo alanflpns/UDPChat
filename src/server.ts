@@ -10,6 +10,7 @@ import {
   ClientMessage,
   DisconnectFromChat,
   MessageClient,
+  WaitContact,
 } from "./types/client-types";
 
 dotenv.config();
@@ -18,6 +19,7 @@ const port = Number(process.env.PORT);
 const address = process.env.ADDRESS;
 
 const clients: Client[] = [];
+const clientsWaitingContact: Client[] = [];
 const openedChats: OpenedChat[] = [];
 
 function generateId() {
@@ -149,6 +151,24 @@ function disconnectFromChat(client: Client, message: DisconnectFromChat) {
   broadcast({ type: "disconnect-chat" }, chat.clients);
 }
 
+function waitContact(client: Client, message: WaitContact) {
+  const clientIsAwaiting = clientsWaitingContact.some((clientWaiting) =>
+    toEqualClient(clientWaiting, client)
+  );
+
+  if (clientIsAwaiting) {
+    return unicast(
+      {
+        type: "server-error",
+        message: "Você já está aguardando contato!",
+      },
+      client
+    );
+  }
+
+  clientsWaitingContact.push(client);
+}
+
 const server = dgram.createSocket("udp4");
 
 server.bind({
@@ -183,6 +203,11 @@ server.on("message", (message, rinfo) => {
       sendMessageInChat(client, unbufferedMessage);
       break;
     case "disconnect":
+      clients.splice(
+        clients.findIndex((clientList) => toEqualClient(clientList, client!)),
+        1
+      );
+
       multicast(
         {
           type: "disconnect",
@@ -193,7 +218,7 @@ server.on("message", (message, rinfo) => {
       );
       break;
     case "list-users":
-      const usersAvailable = clients.filter(
+      const usersAvailable = clientsWaitingContact.filter(
         (clientList) =>
           !(
             toEqualClient(clientList, client!) ||
@@ -237,6 +262,9 @@ server.on("message", (message, rinfo) => {
       if (!client) return;
       disconnectFromChat(client, unbufferedMessage);
       break;
+    case "wait-contact":
+      if (!client) return;
+      waitContact(client, unbufferedMessage);
     default:
       console.log(unbufferedMessage);
       break;
