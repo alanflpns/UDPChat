@@ -169,6 +169,14 @@ function waitContact(client: Client, message: WaitContact) {
   clientsWaitingContact.push(client);
 }
 
+function removeFromClients(client: Client, clientsList = clients) {
+  const index = clientsList.findIndex((clientFromList) =>
+    toEqualClient(clientFromList, client)
+  );
+
+  clientsList.splice(index, 1);
+}
+
 const server = dgram.createSocket("udp4");
 
 server.bind({
@@ -204,7 +212,9 @@ server.on("message", (message, rinfo) => {
       break;
     case "disconnect":
       clients.splice(
-        clients.findIndex((clientList) => toEqualClient(clientList, client!)),
+        clients.findIndex((clientFromList) =>
+          toEqualClient(clientFromList, client!)
+        ),
         1
       );
 
@@ -219,10 +229,10 @@ server.on("message", (message, rinfo) => {
       break;
     case "list-users":
       const usersAvailable = clientsWaitingContact.filter(
-        (clientList) =>
+        (clientFromList) =>
           !(
-            toEqualClient(clientList, client!) ||
-            findChatByClient(clientList, openedChats)
+            toEqualClient(clientFromList, client!) ||
+            findChatByClient(clientFromList, openedChats)
           )
       );
 
@@ -254,6 +264,9 @@ server.on("message", (message, rinfo) => {
       };
 
       openedChats.push(newChat);
+      newChat.clients.map((clientFromChat) => {
+        removeFromClients(clientFromChat, clientsWaitingContact);
+      });
 
       broadcast({ type: "start-chat", chat: newChat }, newChat.clients);
 
